@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Túlóra nyilvántartás</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="page-header">
+    <h1>Túlóra nyilvántartás</h1>
+  </header>
+
+  <main>
+    <section class="overview" aria-label="Összesítés">
+      <div class="card balance">
+        <div class="balance-top">
+          <div>
+            <p class="tile-label">Lecsúsztatható egyenleg (szorzóval)</p>
+            <p class="hero" id="open-hours">–</p>
+          </div>
+          <button type="button" class="primary" id="open-compensate" disabled>Lecsúsztatás…</button>
+        </div>
+        <div class="meter" id="meter" role="progressbar" aria-label="Haladás a 8 órás lecsúsztatásig" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0">
+          <div class="meter-fill" id="meter-fill"></div>
+        </div>
+        <p class="tile-note" id="balance-note"></p>
+      </div>
+      <div class="card tile">
+        <p class="tile-label">Lecsúsztatva összesen</p>
+        <p class="tile-value" id="total-compensated">–</p>
+        <p class="tile-note" id="total-compensated-days"></p>
+      </div>
+      <div class="card tile">
+        <p class="tile-label">Túlóra</p>
+        <p class="tile-value" id="total-overtime">–</p>
+        <p class="tile-note" id="total-entries"></p>
+      </div>
+      <div class="card tile">
+        <p class="tile-label">Túlóra szorzóval</p>
+        <p class="tile-value" id="total-weighted">–</p>
+        <p class="tile-note" id="total-weighted-note"></p>
+      </div>
+    </section>
+
+    <nav class="tabs" role="tablist" aria-label="Nézetek">
+      <button type="button" role="tab" class="tab" id="tab-entries" aria-controls="view-entries" aria-selected="true">Túlórák</button>
+      <button type="button" role="tab" class="tab" id="tab-compensations" aria-controls="view-compensations" aria-selected="false">Lecsúsztatások</button>
+      <button type="button" role="tab" class="tab" id="tab-calendar" aria-controls="view-calendar" aria-selected="false">Naptár</button>
+      <button type="button" role="tab" class="tab" id="tab-backup" aria-controls="view-backup" aria-selected="false">Mentés</button>
+    </nav>
+
+    <section id="view-entries" role="tabpanel" aria-labelledby="tab-entries">
+      <form class="card form" id="entry-form" novalidate>
+        <h2 id="form-title">Új túlóra</h2>
+        <div class="form-grid">
+          <label class="field">
+            <span>Hibajegy</span>
+            <input id="ticket" maxlength="100" required placeholder="pl. INC-1234" autocomplete="off">
+          </label>
+          <div class="field" role="group" aria-labelledby="start-label">
+            <div class="field-head">
+              <span id="start-label">Kezdés</span>
+            </div>
+            <div class="datetime">
+              <input id="start-date" data-picker="date" inputmode="numeric" maxlength="13" placeholder="ÉÉÉÉ-HH-NN" autocomplete="off" aria-label="Kezdés dátuma, ÉÉÉÉ-HH-NN formátumban" required>
+              <input id="start-time" class="time" inputmode="numeric" maxlength="5" placeholder="ÓÓ:PP" aria-label="Kezdés ideje, 24 órás formátumban" autocomplete="off" required>
+            </div>
+          </div>
+          <div class="field" role="group" aria-labelledby="end-label">
+            <div class="field-head">
+              <span id="end-label">Vége</span>
+              <div class="quick">
+                <button type="button" class="small" data-minutes="30" title="Vége = kezdés +0,5 óra">+0.5</button>
+                <button type="button" class="small" data-minutes="60" title="Vége = kezdés +1 óra">+1</button>
+                <button type="button" class="small" data-minutes="120" title="Vége = kezdés +2 óra">+2</button>
+              </div>
+            </div>
+            <div class="datetime">
+              <input id="end-date" data-picker="date" inputmode="numeric" maxlength="13" placeholder="ÉÉÉÉ-HH-NN" autocomplete="off" aria-label="Vége dátuma, ÉÉÉÉ-HH-NN formátumban" required>
+              <input id="end-time" class="time" inputmode="numeric" maxlength="5" placeholder="ÓÓ:PP" aria-label="Vége ideje, 24 órás formátumban" autocomplete="off" required>
+            </div>
+          </div>
+          <label class="field wide">
+            <span>Leírás</span>
+            <textarea id="description" maxlength="2000" rows="2" required placeholder="Mit csináltál?"></textarea>
+          </label>
+        </div>
+        <div class="form-footer">
+          <div class="preview" id="preview" aria-live="polite"></div>
+          <div class="form-actions">
+            <button type="button" id="cancel-edit" hidden>Mégse</button>
+            <button type="submit" class="primary" id="submit-entry">Hozzáadás</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="toolbar">
+        <label class="field inline">
+          <span>Hónap</span>
+          <input id="month" data-picker="month" inputmode="numeric" maxlength="8" placeholder="ÉÉÉÉ-HH" autocomplete="off">
+        </label>
+        <button type="button" id="all-months">Összes hónap</button>
+        <label class="field inline grow">
+          <span>Keresés</span>
+          <input id="search" type="search" placeholder="Hibajegy vagy leírás">
+        </label>
+        <a class="button" id="export" href="/api/export.csv">CSV letöltése</a>
+      </div>
+
+      <div class="card table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Hibajegy</th>
+              <th>Leírás</th>
+              <th>Időszak</th>
+              <th class="num">Túlóra</th>
+              <th>Szorzók</th>
+              <th class="num">Szorzóval</th>
+              <th>Állapot</th>
+              <th><span class="sr-only">Műveletek</span></th>
+            </tr>
+          </thead>
+          <tbody id="entries"></tbody>
+        </table>
+        <p class="empty" id="entries-empty" hidden>Nincs találat ebben az időszakban.</p>
+      </div>
+    </section>
+
+    <section id="view-compensations" role="tabpanel" aria-labelledby="tab-compensations" hidden>
+      <div class="list" id="compensations"></div>
+      <p class="card empty" id="compensations-empty" hidden>Még nincs lecsúsztatás. Ha van nyitott szorzós órád, a fenti gombbal rögzítheted.</p>
+    </section>
+
+    <section id="view-calendar" role="tabpanel" aria-labelledby="tab-calendar" hidden>
+      <form class="card form" id="calendar-form" novalidate>
+        <h2>Nap megjelölése</h2>
+        <p class="hint">Az áthelyezett munkanapokat és a céges pihenőnapokat itt add meg. A hétvégéket és a törvényes ünnepeket a program magától tudja.</p>
+        <div class="form-grid">
+          <label class="field">
+            <span>Nap</span>
+            <input id="calendar-day" data-picker="date" inputmode="numeric" maxlength="13" placeholder="ÉÉÉÉ-HH-NN" autocomplete="off" required>
+          </label>
+          <label class="field">
+            <span>Típus</span>
+            <select id="calendar-kind">
+              <option value="rest" id="kind-rest">Pihenőnap</option>
+              <option value="work" id="kind-work">Munkanap</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Megjegyzés</span>
+            <input id="calendar-note" maxlength="200" placeholder="pl. áthelyezett munkanap">
+          </label>
+        </div>
+        <div class="form-footer">
+          <div></div>
+          <div class="form-actions"><button type="submit" class="primary">Mentés</button></div>
+        </div>
+      </form>
+
+      <div class="toolbar">
+        <label class="field inline">
+          <span>Év</span>
+          <input id="calendar-year" type="number" min="2000" max="2100">
+        </label>
+      </div>
+
+      <div class="columns">
+        <div class="card">
+          <h2>Egyedi napok</h2>
+          <ul class="day-list" id="overrides"></ul>
+          <p class="empty" id="overrides-empty" hidden>Ebben az évben nincs egyedi nap.</p>
+        </div>
+        <div class="card">
+          <h2>Törvényes ünnepek</h2>
+          <ul class="day-list" id="holidays"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-backup" role="tabpanel" aria-labelledby="tab-backup" hidden>
+      <div class="columns">
+        <div class="card stack">
+          <h2>Mentés készítése</h2>
+          <p class="hint">Minden adatot, vagyis a bejegyzéseket, a lecsúsztatásokat és az egyedi napokat egyetlen JSON fájlba tölti le.</p>
+          <a class="button primary" id="backup-download" href="/api/backup">Mentés letöltése</a>
+        </div>
+        <form class="card stack" id="restore-form" novalidate>
+          <h2>Visszaállítás mentésből</h2>
+          <p class="hint">A mentés tartalma lecseréli az összes jelenlegi adatot. Előtte a program a mostani állapotot automatikusan elmenti a <code>data/backups</code> mappába. A szorzókat és az idősávokat a mentés nem állítja vissza, azok a környezeti változókból jönnek.</p>
+          <input type="file" id="backup-file" accept=".json,application/json">
+          <button type="submit" class="primary">Visszaállítás</button>
+          <p class="restore-result" id="restore-result" role="status" hidden></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="compensate-dialog">
+    <form id="compensate-form" novalidate>
+      <h2>Lecsúsztatás rögzítése</h2>
+      <p class="hint">A választott szorzós óraszám a nyitott egyenlegből vonódik le, a legrégebbi túlóráktól kezdve. Egy napra legfeljebb 8 óra rögzíthető, és később visszavonható.</p>
+      <label class="field">
+        <span>Melyik napon voltál szabadon?</span>
+        <input id="compensate-day" data-picker="date" inputmode="numeric" maxlength="13" placeholder="ÉÉÉÉ-HH-NN" autocomplete="off" required>
+      </label>
+      <label class="field">
+        <span>Mennyit csúsztatsz le? (szorzós óra)</span>
+        <select id="compensate-hours"></select>
+      </label>
+      <label class="field">
+        <span>Megjegyzés (nem kötelező)</span>
+        <input id="compensate-note" maxlength="500">
+      </label>
+      <p class="form-error" id="compensate-error" role="alert" hidden></p>
+      <div class="form-actions">
+        <button type="button" id="compensate-cancel">Mégse</button>
+        <button type="submit" class="primary">Rögzítés</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="alert" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

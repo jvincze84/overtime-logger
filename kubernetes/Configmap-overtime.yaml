@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: overtime
+  namespace: overtime
+  labels:
+    app: overtime
+data:
+  # Időzóna a mentések idejéhez és fájlnevéhez.
+  TZ: "Europe/Budapest"
+  # Túlóra szorzók százalékban.
+  OVERTIME_RATE_EVENING: "150"
+  OVERTIME_RATE_NIGHT: "165"
+  OVERTIME_RATE_RESTDAY: "200"
+  OVERTIME_RATE_RESTDAY_NIGHT: "215"
+  # Idősávok határai, 24 órás ÓÓ:PP formában.
+  OVERTIME_NIGHT_END: "06:00"
+  OVERTIME_WORK_START: "08:30"
+  OVERTIME_WORK_END: "17:00"
+  OVERTIME_NIGHT_START: "22:00"

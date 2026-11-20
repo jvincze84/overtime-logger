@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: overtime
+  namespace: overtime
+  labels:
+    app: overtime
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # --- haproxytech/kubernetes-ingress (HAProxy Technologies) ---
+    haproxy.org/auth-type: basic-auth
+    haproxy.org/auth-secret: overtime-auth
+    haproxy.org/auth-realm: Overtime
+    # --- Ha jcmoraisjr/haproxy-ingress-t használsz, helyette ezek kellenek
+    #     (és a secretben egy "auth" kulcs htpasswd formátumban):
+    # haproxy-ingress.github.io/auth-type: basic
+    # haproxy-ingress.github.io/auth-secret: overtime-auth
+    # haproxy-ingress.github.io/auth-realm: Overtime
+spec:
+  ingressClassName: haproxy
+  rules:
+    - host: overtime.k8s.vincze.work
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: overtime
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - overtime.k8s.vincze.work
+      secretName: cert-https

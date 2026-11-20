@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: overtime
+  namespace: overtime
+  labels:
+    app: overtime
+spec:
+  # SQLite és ReadWriteOnce kötet: egyszerre csak egy pod futhat.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: overtime
+  template:
+    metadata:
+      labels:
+        app: overtime
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: overtime
+          image: registry.rp.vincze.work/docker-public/overtime:2026-11-12.1a88f3fadc
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          # A ConfigMap módosítása után: kubectl -n overtime rollout restart deployment/overtime
+          envFrom:
+            - configMapRef:
+                name: overtime
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: overtime-data
+        # A gunicorn ideiglenes fájljainak, mert a gyökér fájlrendszer csak olvasható.
+        - name: tmp
+          emptyDir: {}
