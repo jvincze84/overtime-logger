@@ -628,4 +628,13 @@ function init() {
   guarded(refresh)();
 }
 
+// Service workers only exist on HTTPS and localhost; elsewhere the app works without one.
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.register("/sw.js").catch((error) => {
+    console.warn("Service worker registration failed:", error);
+  });
+}
+
 init();
+registerServiceWorker();

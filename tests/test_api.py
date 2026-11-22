@@ -244,6 +244,21 @@ def test_config_exposes_rates(client):
     assert rates == {"evening": 150, "night": 165, "restday": 200, "restday_night": 215}
 
 
+def test_pwa_files_are_served_from_root(client):
+    manifest = client.get("/manifest.webmanifest")
+    assert manifest.status_code == 200
+    assert manifest.mimetype == "application/manifest+json"
+    data = manifest.get_json(force=True)
+    assert data["start_url"] == "/" and data["display"] == "standalone"
+    for icon in data["icons"]:
+        assert client.get(icon["src"]).status_code == 200
+
+    worker = client.get("/sw.js")
+    assert worker.status_code == 200
+    assert worker.mimetype in ("text/javascript", "application/javascript")
+    assert worker.headers["Cache-Control"] == "no-cache"
+
+
 def test_errors_are_json(client):
     response = client.post("/api/entries", data="not json")
     assert response.status_code == 415

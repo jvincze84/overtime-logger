@@ -16,6 +16,8 @@ Ha a felhasználód azonosítója nem 1000, indításkor add meg: `UID=$(id -u) 
 
 A Mentés fülön az összes adat letölthető egy JSON fájlba, és onnan vissza is állítható. A visszaállítás minden jelenlegi adatot lecserél, de előtte a program a mostani állapotot automatikusan elmenti a `data/backups` mappába. A szorzókat és az idősávokat a mentés nem tartalmazza, ezek a környezeti változókból jönnek.
 
+Az alkalmazás PWA, így telefonra és számítógépre is telepíthető, saját ikonnal és ablakkal. A telepítéshez HTTPS kapcsolat kell, kivéve a `localhost` címet. Sima `http`-n a hálózatról böngészőben ugyanúgy használható, csak telepíteni nem lehet. Szerver nélkül a felület betölt, de adatot nem mutat, mert az egyenleg mindig a szerverről jön.
+
 ## Számítási szabályok
 
 | Nap | Időszak | Alapértelmezett szorzó | Környezeti változó |

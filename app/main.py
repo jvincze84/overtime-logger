@@ -411,6 +411,19 @@ def register_routes(app: Flask) -> None:
     def index():
         return app.send_static_file("index.html")
 
+    # Both live at the root: the service worker only controls pages below its own path.
+    @app.get("/sw.js")
+    def service_worker():
+        response = app.send_static_file("sw.js")
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        response = app.send_static_file("manifest.webmanifest")
+        response.mimetype = "application/manifest+json"
+        return response
+
     @app.get("/api/health")
     def health():
         db().execute("SELECT 1")
